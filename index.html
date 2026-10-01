@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Размер выборки для доверительных интервалов долей</title>
+<title>Доверительный интервал Уилсона для доли</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: system-ui, -apple-system, sans-serif; font-size: 15px; color: #1a1a1a; background: #f5f4ef; min-height: 100vh; padding: 2rem 1rem; }
@@ -14,35 +14,18 @@
   @media (max-width: 500px) { .controls { grid-template-columns: 1fr; } }
   label { display: block; font-size: 13px; color: #555; margin-bottom: 6px; }
   .val { font-weight: 500; color: #1a1a1a; float: right; }
-  input[type=range] { width: 100%; cursor: pointer; accent-color: #5340b5; }
+  input[type=range] { width: 100%; cursor: pointer; accent-color: #0f6e56; }
   select { width: 100%; padding: 6px 10px; border: 0.5px solid rgba(0,0,0,0.2); border-radius: 8px; font-size: 14px; background: #fff; cursor: pointer; }
-  .results { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 1.5rem; }
-  @media (max-width: 500px) { .results { grid-template-columns: 1fr; } }
-  .method-card { border-radius: 10px; padding: 1rem 1.25rem; border: 0.5px solid rgba(0,0,0,0.1); }
-  .method-name { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
-  .method-n { font-size: 32px; font-weight: 500; line-height: 1.1; }
-  .method-detail { font-size: 12px; margin-top: 6px; }
-  .method-ci { font-size: 13px; margin-top: 8px; padding-top: 8px; border-top: 0.5px solid rgba(0,0,0,0.1); }
-  .ci-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px; }
-  .ci-bounds { font-variant-numeric: tabular-nums; font-weight: 500; }
-  .m-wald .ci-label { color: #7f77dd; }
-  .m-wald .ci-bounds { color: #3c3489; }
-  .m-wilson .ci-label { color: #1d9e75; }
-  .m-wilson .ci-bounds { color: #085041; }
-  .m-agresti .ci-label { color: #378add; }
-  .m-agresti .ci-bounds { color: #0c447c; }
-  .m-wald { background: #eeedfe; border-color: #afa9ec; }
-  .m-wald .method-name { color: #533ab7; }
-  .m-wald .method-n { color: #3c3489; }
-  .m-wald .method-detail { color: #7f77dd; }
+  .results { margin-top: 1.5rem; }
+  .method-card { border-radius: 10px; padding: 1rem 1.25rem; border: 0.5px solid rgba(0,0,0,0.1); display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start; }
+  @media (max-width: 500px) { .method-card { grid-template-columns: 1fr; } }
+  .result-block {}
+  .result-label { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; color: #0f6e56; }
+  .result-value { font-size: 36px; font-weight: 500; line-height: 1.1; color: #085041; }
+  .result-sub { font-size: 12px; margin-top: 6px; color: #1d9e75; }
+  .ci-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px; color: #1d9e75; }
+  .ci-bounds { font-variant-numeric: tabular-nums; font-weight: 500; font-size: 18px; color: #085041; }
   .m-wilson { background: #e1f5ee; border-color: #5dcaa5; }
-  .m-wilson .method-name { color: #0f6e56; }
-  .m-wilson .method-n { color: #085041; }
-  .m-wilson .method-detail { color: #1d9e75; }
-  .m-agresti { background: #e6f1fb; border-color: #85b7eb; }
-  .m-agresti .method-name { color: #185fa5; }
-  .m-agresti .method-n { color: #0c447c; }
-  .m-agresti .method-detail { color: #378add; }
   .divider { height: 0.5px; background: rgba(0,0,0,0.08); margin: 1.5rem 0; }
   h2 { font-size: 15px; font-weight: 500; margin-bottom: 1rem; }
   .chart-wrap { position: relative; width: 100%; height: 260px; }
@@ -54,8 +37,8 @@
 <body>
 
 <div class="card">
-  <h1>Размер выборки для доверительных интервалов</h1>
-  <p class="subtitle">Методы Вальда, Уилсона и Agresti-Coull</p>
+  <h1>Доверительный интервал Уилсона</h1>
+  <p class="subtitle">Полуширина интервала при заданном размере выборки</p>
 
   <div class="controls">
     <div>
@@ -63,8 +46,8 @@
       <input type="range" id="p" min="0" max="1" step="0.01" value="0.5">
     </div>
     <div>
-      <label>Полуширина интервала <em>E</em> <span class="val" id="e-val">0.05</span></label>
-      <input type="range" id="e" min="0.01" max="0.20" step="0.005" value="0.05">
+      <label>Размер выборки <em>n</em> <span class="val" id="n-val">200</span></label>
+      <input type="range" id="n" min="10" max="2000" step="10" value="200">
     </div>
     <div>
       <label>Уровень доверия</label>
@@ -77,108 +60,48 @@
   </div>
 
   <div class="results">
-    <div class="method-card m-wald">
-      <div class="method-name">Wald</div>
-      <div class="method-n" id="n-wald">—</div>
-      <div class="method-detail">аналитически</div>
-      <div class="method-ci">
-        <div class="ci-label">Границы интервала</div>
-        <div class="ci-bounds" id="ci-wald">—</div>
-      </div>
-    </div>
     <div class="method-card m-wilson">
-      <div class="method-name">Wilson</div>
-      <div class="method-n" id="n-wilson">—</div>
-      <div class="method-detail">численно</div>
-      <div class="method-ci">
-        <div class="ci-label">Границы интервала</div>
-        <div class="ci-bounds" id="ci-wilson">—</div>
+      <div class="result-block">
+        <div class="result-label">Полуширина E</div>
+        <div class="result-value" id="hw-out">—</div>
+        <div class="result-sub">метод Уилсона</div>
       </div>
-    </div>
-    <div class="method-card m-agresti">
-      <div class="method-name">Agresti-Coull</div>
-      <div class="method-n" id="n-agresti">—</div>
-      <div class="method-detail">численно</div>
-      <div class="method-ci">
+      <div class="result-block">
         <div class="ci-label">Границы интервала</div>
-        <div class="ci-bounds" id="ci-agresti">—</div>
+        <div class="ci-bounds" id="ci-out">—</div>
       </div>
     </div>
   </div>
 
   <div class="divider"></div>
-  <h2>Как меняется n при разных p (фиксированные E и уровень доверия)</h2>
+  <h2>Как меняется E при разных p (фиксированные n и уровень доверия)</h2>
   <div class="chart-wrap">
-    <canvas id="chart" role="img" aria-label="Зависимость размера выборки от доли p для трёх методов">График зависимости n от p.</canvas>
+    <canvas id="chart" role="img" aria-label="Зависимость полуширины интервала от доли p">График зависимости E от p.</canvas>
   </div>
   <p class="note">Вертикальная линия — текущее значение p.</p>
 </div>
 
 <div class="card">
-  <h2>Как устроен численный поиск</h2>
+  <h2>Формула Уилсона</h2>
   <p style="font-size:14px; color:#444; line-height:1.6;">
-    Для Уилсона и Agresti-Coull нельзя выразить <em>n</em> явно. Поэтому мы перебираем <em>n</em> = 1, 2, 3, ... и для каждого считаем полуширину интервала. Как только полуширина становится ≤ заданного <em>E</em> — останавливаемся. Это и есть нужный <em>n</em>.
+    Интервал Уилсона не центрирован вокруг p̂ — центр сдвинут в сторону 0.5. При малых n это даёт лучшее покрытие, чем интервал Вальда.
   </p>
-
   <div class="formula">
-    <strong>Уилсон, полуширина:</strong><br>
-    центр = (p̂ + z²/2n) / (1 + z²/n)<br>
-    E<sub>W</sub> = z · √(p̂(1−p̂)/n + z²/4n²) / (1 + z²/n)
+    <strong>Центр интервала:</strong><br>
+    c = (p̂ + z²/2n) / (1 + z²/n)
   </div>
   <div class="formula" style="margin-top:0.5rem;">
-    <strong>Agresti-Coull, полуширина:</strong><br>
-    ñ = n + z², p̃ = (np̂ + z²/2) / ñ<br>
-    E<sub>AC</sub> = z · √(p̃(1−p̃) / ñ)
+    <strong>Полуширина:</strong><br>
+    E = z · √(p̂(1−p̂)/n + z²/4n²) / (1 + z²/n)
   </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
-function waldN(p, E, z) {
-  return Math.ceil(z * z * p * (1 - p) / (E * E));
-}
-
 function wilsonHalfWidth(p, n, z) {
   const denom = 1 + z * z / n;
   const inner = Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n));
   return z * inner / denom;
-}
-
-function wilsonN(p, E, z) {
-  for (let n = 2; n <= 1000000; n++) {
-    if (wilsonHalfWidth(p, n, z) <= E) return n;
-  }
-  return ">1000000";
-}
-
-function agrestiHalfWidth(p, n, z) {
-  const nt = n + z * z;
-  const pt = (n * p + z * z / 2) / nt;
-  return z * Math.sqrt(pt * (1 - pt) / nt);
-}
-
-function agrestiN(p, E, z) {
-  for (let n = 2; n <= 1000000; n++) {
-    if (agrestiHalfWidth(p, n, z) <= E) return n;
-  }
-  return ">1000000";
-}
-
-const pSlider = document.getElementById('p');
-const eSlider = document.getElementById('e');
-const confSel = document.getElementById('conf');
-const pVal = document.getElementById('p-val');
-const eVal = document.getElementById('e-val');
-const nWald = document.getElementById('n-wald');
-const nWilson = document.getElementById('n-wilson');
-const nAgresti = document.getElementById('n-agresti');
-const ciWald = document.getElementById('ci-wald');
-const ciWilson = document.getElementById('ci-wilson');
-const ciAgresti = document.getElementById('ci-agresti');
-
-function waldCI(p, n, z) {
-  const hw = z * Math.sqrt(p * (1 - p) / n);
-  return [p - hw, p + hw];
 }
 
 function wilsonCI(p, n, z) {
@@ -188,15 +111,17 @@ function wilsonCI(p, n, z) {
   return [center - hw, center + hw];
 }
 
-function agrestiCI(p, n, z) {
-  const nt = n + z * z;
-  const pt = (n * p + z * z / 2) / nt;
-  const hw = agrestiHalfWidth(p, n, z);
-  return [pt - hw, pt + hw];
-}
 function fmtCI(lo, hi) {
   return lo.toFixed(4) + ' – ' + hi.toFixed(4);
 }
+
+const pSlider = document.getElementById('p');
+const nSlider = document.getElementById('n');
+const confSel = document.getElementById('conf');
+const pVal = document.getElementById('p-val');
+const nVal = document.getElementById('n-val');
+const hwOut = document.getElementById('hw-out');
+const ciOut = document.getElementById('ci-out');
 
 const pPoints = [];
 for (let i = 1; i <= 99; i++) pPoints.push(i / 100);
@@ -207,9 +132,7 @@ const chart = new Chart(ctx, {
   data: {
     labels: pPoints.map(p => p.toFixed(2)),
     datasets: [
-      { label: 'Wald', data: [], borderColor: '#7f77dd', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 },
-      { label: 'Wilson', data: [], borderColor: '#1d9e75', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3, borderDash: [5,3] },
-      { label: 'Agresti-Coull', data: [], borderColor: '#378add', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3, borderDash: [2,3] },
+      { label: 'Wilson E', data: [], borderColor: '#1d9e75', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 },
     ]
   },
   options: {
@@ -217,7 +140,7 @@ const chart = new Chart(ctx, {
     maintainAspectRatio: false,
     interaction: { mode: 'index', intersect: false },
     plugins: {
-      legend: { display: true, position: 'top', labels: { font: { size: 12 }, boxWidth: 14, padding: 16 } },
+      legend: { display: false },
       tooltip: { callbacks: { title: (items) => 'p = ' + items[0].label } }
     },
     scales: {
@@ -226,14 +149,14 @@ const chart = new Chart(ctx, {
         ticks: { maxTicksLimit: 10, font: { size: 11 } }
       },
       y: {
-        title: { display: true, text: 'n', font: { size: 12 } },
+        title: { display: true, text: 'E (полуширина)', font: { size: 12 } },
         ticks: { font: { size: 11 } }
       }
     }
   }
 });
 
-let linePlugin = {
+const linePlugin = {
   id: 'vline',
   afterDraw(chart, args, options) {
     const { ctx, scales } = chart;
@@ -253,42 +176,19 @@ Chart.register(linePlugin);
 
 function update() {
   const p = parseFloat(pSlider.value);
-  const E = parseFloat(eSlider.value);
+  const n = parseInt(nSlider.value);
   const z = parseFloat(confSel.value);
 
   pVal.textContent = p.toFixed(2);
-  eVal.textContent = E.toFixed(3);
+  nVal.textContent = n.toLocaleString();
 
-  const nW = waldN(p, E, z);
-  const nWi = wilsonN(p, E, z);
-  const nAg = agrestiN(p, E, z);
+  const hw = wilsonHalfWidth(p, n, z);
+  hwOut.textContent = hw.toFixed(4);
 
-  nWald.textContent = nW.toLocaleString();
-  nWilson.textContent = typeof nWi === 'number' ? nWi.toLocaleString() : nWi;
-  nAgresti.textContent = typeof nAg === 'number' ? nAg.toLocaleString() : nAg;
+  const [lo, hi] = wilsonCI(p, n, z);
+  ciOut.textContent = fmtCI(lo, hi);
 
-  const [wLo, wHi] = waldCI(p, nW, z);
-  ciWald.textContent = fmtCI(wLo, wHi);
-
-  if (typeof nWi === 'number') {
-    const [wiLo, wiHi] = wilsonCI(p, nWi, z);
-    ciWilson.textContent = fmtCI(wiLo, wiHi);
-  } else { ciWilson.textContent = '—'; }
-
-  if (typeof nAg === 'number') {
-    const [agLo, agHi] = agrestiCI(p, nAg, z);
-    ciAgresti.textContent = fmtCI(agLo, agHi);
-  } else { ciAgresti.textContent = '—'; }
-
-  chart.data.datasets[0].data = pPoints.map(pp => waldN(pp, E, z));
-  chart.data.datasets[1].data = pPoints.map(pp => {
-    const n = wilsonN(pp, E, z);
-    return typeof n === 'number' ? n : null;
-  });
-  chart.data.datasets[2].data = pPoints.map(pp => {
-    const n = agrestiN(pp, E, z);
-    return typeof n === 'number' ? n : null;
-  });
+  chart.data.datasets[0].data = pPoints.map(pp => wilsonHalfWidth(pp, n, z));
 
   const xIdx = Math.round(p * 100) - 1;
   chart.options.plugins.vline = { xIndex: xIdx };
@@ -296,7 +196,7 @@ function update() {
 }
 
 pSlider.addEventListener('input', update);
-eSlider.addEventListener('input', update);
+nSlider.addEventListener('input', update);
 confSel.addEventListener('change', update);
 update();
 </script>
